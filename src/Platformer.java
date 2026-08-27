@@ -37,7 +37,7 @@ public class Platformer extends JFrame {
         JFileChooser fc = new JFileChooser();
         fc.setCurrentDirectory(new File("./"));
         fc.setDialogTitle("Select input image");
-        FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp");
+        FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp", "png");
         fc.setFileFilter(filter);
         int result = fc.showOpenDialog(this);
         File selectedFile = new File("");
