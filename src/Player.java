@@ -32,10 +32,10 @@ public class Player {
             // Standbild laden
             standFrame = ImageIO.read(new File("assets/Player/p1_front.png"));
 
-            // 11 Lauf-Frames laden (p1_walk01.png bis p1_walk11.png)
+            // 11 Lauf-Frames laden (assets/Player/p1_walk/PNG/p1_walk01.png bis p1_walk11.png)
             walkFrames = new BufferedImage[11];
             for (int i = 0; i < 11; i++) {
-                String filename = String.format("assets/Player/p1_walk%02d.png", i + 1);
+                String filename = String.format("assets/Player/p1_walk/PNG/p1_walk%02d.png", i + 1);
                 walkFrames[i] = ImageIO.read(new File(filename));
             }
         } catch (IOException e) {
