@@ -15,90 +15,178 @@ import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class Platformer extends JFrame {
-	@Serial
-	private static final long serialVersionUID = 5736902251450559962L;
+    @Serial
+    private static final long serialVersionUID = 5736902251450559962L;
 
-	private Level l = null;
+    private static final int VIEW_WIDTH = 1000;
+    private static final int VIEW_HEIGHT = 5 * 70; // 350
 
-	public Platformer() {
-		// exit program when window is closed
-		this.addWindowListener(new WindowAdapter() {
-			public void windowClosing(WindowEvent e) {
-				System.exit(0);
-			}
-		});
+    private Level l = null;
+    private Player player = null;
+    private BufferStrategy bufferStrategy;
 
-		JFileChooser fc = new JFileChooser();
-		fc.setCurrentDirectory(new File("./"));
-		fc.setDialogTitle("Select input image");
-		FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp", "png");
-		fc.setFileFilter(filter);
-		int result = fc.showOpenDialog(this);
-		File selectedFile = new File("");
-		addKeyListener(new AL(this));
+    public Platformer() {
+        // Exit program when window is closed
+        this.addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                System.exit(0);
+            }
+        });
 
-		if (result == JFileChooser.APPROVE_OPTION) {
-			selectedFile = fc.getSelectedFile();
-			System.out.println("Selected file: " + selectedFile.getAbsolutePath());
-		} else {
-			dispose();
-			System.exit(0);
-		}
+        JFileChooser fc = new JFileChooser();
+        fc.setCurrentDirectory(new File("./"));
+        fc.setDialogTitle("Select input image");
+        FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp");
+        fc.setFileFilter(filter);
+        int result = fc.showOpenDialog(this);
+        File selectedFile = new File("");
+        addKeyListener(new AL(this));
 
-		try {
-			l = new Level(selectedFile.getAbsolutePath());
+        if (result == JFileChooser.APPROVE_OPTION) {
+            selectedFile = fc.getSelectedFile();
+            System.out.println("Selected file: " + selectedFile.getAbsolutePath());
+        } else {
+            dispose();
+            System.exit(0);
+        }
 
-			this.setBounds(0, 0, 1000, 5 * 70);
-			this.setVisible(true);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+        try {
+            l = new Level(selectedFile.getAbsolutePath());
+            player = new Player();
 
-	}
+            this.setBounds(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+            this.setResizable(false);
+            this.setVisible(true);
 
-	private void updateGameStateAndRepaint() {
-		l.update();
-		repaint();
-	}
+            // DoubleBuffering einrichten
+            createBufferStrategy(2);
+            bufferStrategy = this.getBufferStrategy();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
 
-	@Override
-	public void paint(Graphics g) {
-		Graphics2D g2 = (Graphics2D) g;
-		draw(g2);
-	}
+    public Player getPlayer() {
+        return player;
+    }
 
-	private void draw(Graphics2D g2d) {
-		BufferedImage level = (BufferedImage) l.getResultingImage();
-		if (l.offsetX > level.getWidth() - 1000)
-			l.offsetX = level.getWidth() - 1000;
-		BufferedImage bi = level.getSubimage((int) l.offsetX, 0, 1000, level.getHeight());
-		g2d.drawImage(bi, 0, 0, this);
-	}
+    private void updateGameStateAndRepaint() {
+        if (player != null) {
+            player.move();
 
-	public class AL extends KeyAdapter {
-		Platformer p;
+            // Spieler innerhalb des Levels halten
+            int maxX = (l != null) ? l.getWidth() - 70 : VIEW_WIDTH;
+            int maxY = (l != null) ? l.getHeight() - 70 : VIEW_HEIGHT;
 
-		public AL(Platformer p) {
-			super();
-			this.p = p;
-		}
+            player.x = Math.max(0, Math.min(player.x, maxX));
+            player.y = Math.max(0, Math.min(player.y, maxY));
+        }
 
-		@Override
-		public void keyPressed(KeyEvent event) {
-			int keyCode = event.getKeyCode();
+        if (l != null) {
+            // Kamera an der Spielfigur orientieren
+            l.offsetX = (float) (player.x - (VIEW_WIDTH / 2.0));
+            l.update();
+        }
 
-			if (keyCode == KeyEvent.VK_ESCAPE) {
-				dispose();
-			}
+        repaint();
+    }
 
-			if (keyCode == KeyEvent.VK_LEFT) {
-				l.offsetX -= 10;
-			}
+    @Override
+    public void paint(Graphics g) {
+        if (bufferStrategy == null) {
+            return;
+        }
 
-			if (keyCode == KeyEvent.VK_RIGHT) {
-				l.offsetX += 10;
-			}
-			updateGameStateAndRepaint();
-		}
-	}
+        Graphics2D g2 = null;
+        try {
+            g2 = (Graphics2D) bufferStrategy.getDrawGraphics();
+            draw(g2);
+        } finally {
+            if (g2 != null) {
+                g2.dispose();
+            }
+        }
+        bufferStrategy.show();
+    }
+
+    private void draw(Graphics2D g2) {
+        if (l == null) return;
+
+        BufferedImage imgLevel = (BufferedImage) l.getResultingImage();
+        if (imgLevel == null) return;
+
+        // Sicherheitsprüfung des Offsets
+        if (l.offsetX > imgLevel.getWidth() - VIEW_WIDTH) {
+            l.offsetX = imgLevel.getWidth() - VIEW_WIDTH;
+        }
+        if (l.offsetX < 0) {
+            l.offsetX = 0;
+        }
+
+        // 1. Sichtbaren Ausschnitt des Levels zeichnen
+        BufferedImage visibleLevel = l.getSubimage((int) l.offsetX, 0, VIEW_WIDTH, Math.min(VIEW_HEIGHT, l.getHeight()));
+        g2.drawImage(visibleLevel, 0, 0, this);
+
+        // 2. Spielfigur relativ zum sichtbaren Ausschnitt zeichnen
+        if (player != null) {
+            int playerScreenX = (int) player.x - (int) l.offsetX;
+            int playerScreenY = (int) player.y;
+
+            g2.drawImage(player.getImage(), playerScreenX, playerScreenY, this);
+        }
+    }
+
+    public class AL extends KeyAdapter {
+        Platformer p;
+
+        public AL(Platformer p) {
+            super();
+            this.p = p;
+        }
+
+        @Override
+        public void keyPressed(KeyEvent event) {
+            int keyCode = event.getKeyCode();
+
+            if (keyCode == KeyEvent.VK_ESCAPE) {
+                p.dispose();
+                System.exit(0);
+            }
+
+            // Steuerung des Spielers in X- und Y-Richtung
+            if (p.player != null) {
+                if (keyCode == KeyEvent.VK_LEFT) {
+                    p.player.speedX = -10;
+                }
+                if (keyCode == KeyEvent.VK_RIGHT) {
+                    p.player.speedX = 10;
+                }
+                if (keyCode == KeyEvent.VK_UP) {
+                    p.player.speedY = -10;
+                }
+                if (keyCode == KeyEvent.VK_DOWN) {
+                    p.player.speedY = 10;
+                }
+            }
+
+            p.updateGameStateAndRepaint();
+        }
+
+        @Override
+        public void keyReleased(KeyEvent event) {
+            int keyCode = event.getKeyCode();
+
+            if (p.player != null) {
+                if (keyCode == KeyEvent.VK_LEFT || keyCode == KeyEvent.VK_RIGHT) {
+                    p.player.speedX = 0;
+                }
+                if (keyCode == KeyEvent.VK_UP || keyCode == KeyEvent.VK_DOWN) {
+                    p.player.speedY = 0;
+                }
+            }
+
+            p.updateGameStateAndRepaint();
+        }
+    }
 }
