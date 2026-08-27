@@ -59,6 +59,9 @@ public class Platformer extends JFrame {
             this.setResizable(false);
             this.setVisible(true);
 
+            createBufferStrategy(2);
+            bufferStrategy = this.getBufferStrategy();
+
             // DoubleBuffering einrichten
             createBufferStrategy(2);
             bufferStrategy = this.getBufferStrategy();
@@ -89,7 +92,7 @@ public class Platformer extends JFrame {
             l.update();
         }
 
-        repaint();
+        paint(this.getGraphics());
     }
 
     @Override
@@ -113,26 +116,12 @@ public class Platformer extends JFrame {
     private void draw(Graphics2D g2) {
         if (l == null) return;
 
-        BufferedImage imgLevel = (BufferedImage) l.getResultingImage();
-        if (imgLevel == null) return;
-
-        // Sicherheitsprüfung des Offsets
-        if (l.offsetX > imgLevel.getWidth() - VIEW_WIDTH) {
-            l.offsetX = imgLevel.getWidth() - VIEW_WIDTH;
-        }
-        if (l.offsetX < 0) {
-            l.offsetX = 0;
-        }
-
-        // 1. Sichtbaren Ausschnitt des Levels zeichnen
-        BufferedImage visibleLevel = l.getSubimage((int) l.offsetX, 0, VIEW_WIDTH, Math.max(VIEW_HEIGHT, l.getHeight()));
+        BufferedImage visibleLevel = l.getSubimage((int) l.offsetX, 0, 1000, l.getHeight());
         g2.drawImage(visibleLevel, 0, 0, this);
 
-        // 2. Spielfigur relativ zum sichtbaren Ausschnitt zeichnen
         if (player != null) {
             int playerScreenX = (int) player.x - (int) l.offsetX;
             int playerScreenY = (int) player.y;
-
             g2.drawImage(player.getImage(), playerScreenX, playerScreenY, this);
         }
     }
