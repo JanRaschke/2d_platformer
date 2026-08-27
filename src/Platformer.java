@@ -55,7 +55,7 @@ public class Platformer extends JFrame {
             l = new Level(selectedFile.getAbsolutePath());
             player = new Player();
 
-            this.setBounds(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+            this.setBounds(0, 0, VIEW_WIDTH, l.getHeight());
             this.setResizable(false);
             this.setVisible(true);
 
@@ -125,7 +125,7 @@ public class Platformer extends JFrame {
         }
 
         // 1. Sichtbaren Ausschnitt des Levels zeichnen
-        BufferedImage visibleLevel = l.getSubimage((int) l.offsetX, 0, VIEW_WIDTH, Math.min(VIEW_HEIGHT, l.getHeight()));
+        BufferedImage visibleLevel = l.getSubimage((int) l.offsetX, 0, VIEW_WIDTH, Math.max(VIEW_HEIGHT, l.getHeight()));
         g2.drawImage(visibleLevel, 0, 0, this);
 
         // 2. Spielfigur relativ zum sichtbaren Ausschnitt zeichnen

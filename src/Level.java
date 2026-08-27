@@ -66,12 +66,13 @@ public class Level {
 
                     Color color = new Color(levelImg.getRGB(x, y));
                     int tileIndex = -1;
-
+                    System.out.println("tileIndex: " + color);
                     // Compare color of pixels in order to select the corresponding tiles
                     if (color.equals(Color.BLACK))
                         tileIndex = 0;
-                    if (color.equals(Color.BLUE))
+                    if (color.getRed() < 70 && color.getBlue() > 200 && color.getGreen() < 70) {
                         tileIndex = 1;
+                       }
 
                     if (tileIndex < 0 || tileIndex >= tileImages.size())
                         continue;
