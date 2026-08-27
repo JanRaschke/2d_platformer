@@ -66,7 +66,6 @@ public class Level {
 
                     Color color = new Color(levelImg.getRGB(x, y));
                     int tileIndex = -1;
-                    System.out.println("tileIndex: " + color);
                     // Compare color of pixels in order to select the corresponding tiles
                     if (color.equals(Color.BLACK))
                         tileIndex = 0;
