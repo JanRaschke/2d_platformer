@@ -4,6 +4,7 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.Serial;
@@ -30,7 +31,7 @@ public class Platformer extends JFrame {
 		JFileChooser fc = new JFileChooser();
 		fc.setCurrentDirectory(new File("./"));
 		fc.setDialogTitle("Select input image");
-		FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp");
+		FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp", "png");
 		fc.setFileFilter(filter);
 		int result = fc.showOpenDialog(this);
 		File selectedFile = new File("");
