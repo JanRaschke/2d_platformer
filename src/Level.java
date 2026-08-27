@@ -1,75 +1,83 @@
-import javax.imageio.ImageIO;
-import java.awt.*;
+import java.awt.Color;
+import java.awt.Graphics2D;
+import java.awt.Image;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+
+import javax.imageio.ImageIO;
+
 
 public class Level {
+    BufferedImage levelImg, resultingLevelImg;
+    Vec2 lvlSize;
+    float offsetX;
+    public static ArrayList<BufferedImage> tileImages = new ArrayList<>();
+    public int tileSize = 70;
 
-    private BufferedImage levelImg;
-    private BufferedImage grassTile;
-    private BufferedImage waterTile;
-    private BufferedImage renderedLevel;
-
-    public Level() {
-        loadImages();
-        this.renderedLevel = createLevelImage();
-    }
-
-    /**
-     * Lädt die Rohbilder (Kacheln und Level-Map).
-     */
-    private void loadImages() {
+    public Level(String levelMapPath) {
         try {
-            levelImg = ImageIO.read(new File("level1.bmp"));
-            grassTile = ImageIO.read(new File("assets/Tiles/grassMid.png"));
-            waterTile = ImageIO.read(new File("assets/Tiles/liquidWaterTop_mid.png"));
-        } catch (IOException e) {
-            System.err.println("Fehler beim Laden der Bilddateien: " + e.getMessage());
+            lvlSize = new Vec2(0, 0);
+            offsetX = 0.0f;
+
+            try {
+                // Level image
+                levelImg = ImageIO.read(new File(levelMapPath));
+
+                // Tile images
+                tileImages.add(ImageIO.read(new File("./assets/Tiles/grassMid.png")));
+                tileImages.add(ImageIO.read(new File("./assets/Tiles/liquidWaterTop_mid.png")));
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            initLevel();
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
 
-    /**
-     * Erzeugt das zusammengesetzte Ausgabebild basierend auf den Pixel-Farben von level1.bmp.
-     */
-    public BufferedImage createLevelImage() {
-        if (levelImg == null || grassTile == null || waterTile == null) {
-            return null;
-        }
+    public void update() {
+        if (offsetX < 0)
+            offsetX = 0;
 
-        int tileWidth = grassTile.getWidth();
-        int tileHeight = grassTile.getHeight();
-
-        int totalWidth = levelImg.getWidth() * tileWidth;
-        int totalHeight = levelImg.getHeight() * tileHeight;
-
-        BufferedImage output = new BufferedImage(totalWidth, totalHeight, BufferedImage.TYPE_INT_RGB);
-        Graphics2D g2d = output.createGraphics();
-
-        try {
-            for (int y = 0; y < levelImg.getHeight(); y++) {
-                for (int x = 0; x < levelImg.getWidth(); x++) {
-                    Color color = new Color(levelImg.getRGB(x, y));
-
-                    int drawX = x * tileWidth;
-                    int drawY = y * tileHeight;
-
-                    if (color.equals(Color.BLUE)) {
-                        g2d.drawImage(waterTile, drawX, drawY, null);
-                    } else if (color.equals(Color.BLACK)) {
-                        g2d.drawImage(grassTile, drawX, drawY, null);
-                    }
-                }
-            }
-        } finally {
-            g2d.dispose();
-        }
-
-        return output;
+        if (offsetX > resultingLevelImg.getWidth() - 1000)
+            offsetX = resultingLevelImg.getWidth() - 1000;
     }
 
-    public BufferedImage getRenderedLevel() {
-        return renderedLevel;
+    public void initLevel() {
+        lvlSize.x = tileSize * levelImg.getWidth(null);
+        lvlSize.y = tileSize * levelImg.getHeight(null);
+
+        resultingLevelImg = new BufferedImage((int) lvlSize.x, (int) lvlSize.y, BufferedImage.TYPE_INT_RGB);
+
+        Graphics2D g2d;
+        g2d = (Graphics2D) resultingLevelImg.getGraphics();
+
+        for (int y = 0; y < levelImg.getHeight(null); y++) {
+            for (int x = 0; x < levelImg.getWidth(null); x++) {
+
+                Color color = new Color(levelImg.getRGB(x, y));
+
+                int tileIndex = -1;
+
+                // Compare color of pixels in order to select the corresponding tiles
+
+                if (color.equals(Color.BLACK))
+                    tileIndex = 0;
+                if (color.equals(Color.BLUE))
+                    tileIndex = 1;
+
+                if (tileIndex < 0)
+                    continue;
+
+                g2d.drawImage(tileImages.get(tileIndex), null, x * tileSize, y * tileSize);
+            }
+        }
+        g2d.dispose();
+    }
+
+    public Image getResultingImage() {
+        return resultingLevelImg;
     }
 }

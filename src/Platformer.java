@@ -8,86 +8,96 @@ import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.Serial;
 
-import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class Platformer extends JFrame {
-	@Serial
-	private static final long serialVersionUID = 5736902251450559962L;
-	private Level level;
-	private int cameraX = 0;
+    @Serial
+    private static final long serialVersionUID = 5736902251450559962L;
 
-	BufferedImage levelImg;
+    private Level l = null;
 
-	public Platformer() {
-		// exit program when window is closed
-		this.addWindowListener(new WindowAdapter() {
-			public void windowClosing(WindowEvent e) {
-				System.exit(0);
-			}
-		});
+    public Platformer() {
+        //exit program when window is closed
+        this.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                System.exit(0);
+            }
+        });
 
-		this.level = new Level();
-		this.addKeyListener(new KeyAdapter() {
+        JFileChooser fc = new JFileChooser();
+        fc.setCurrentDirectory(new File("./"));
+        fc.setDialogTitle("Select input image");
+        FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp");
+        fc.setFileFilter(filter);
+        int result = fc.showOpenDialog(this);
+        File selectedFile = new File("");
+        addKeyListener(new AL(this));
 
-			@Override
-			public void keyPressed(KeyEvent e) {
-				if (level == null || level.getRenderedLevel() == null) {
-					return;
-				}
-				if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-					cameraX = Math.max(0, cameraX - 20);
-					repaint();
-				} else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-					int maxScroll = level.getRenderedLevel().getWidth() - 1000;
-					cameraX = Math.min(maxScroll, cameraX + 20);
-					repaint();
-				}
+        if (result == JFileChooser.APPROVE_OPTION) {
+            selectedFile = fc.getSelectedFile();
+            System.out.println("Selected file: " + selectedFile.getAbsolutePath());
+        } else {
+            dispose();
+            System.exit(0);
+        }
 
-			}
+        try {
+            l = new Level(selectedFile.getAbsolutePath());
 
-		});
+            this.setBounds(0, 0, 1000, 5 * 70);
+            this.setVisible(true);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-		this.setTitle("Platformer");
+    }
 
-		JFileChooser fc = new JFileChooser();
-		fc.setCurrentDirectory(new File("./"));
-		fc.setDialogTitle("Select input image");
-		FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp");
-		fc.setFileFilter(filter);
-		int result = fc.showOpenDialog(this);
-		File selectedFile = new File("");
+    private void updateGameStateAndRepaint() {
+        l.update();
+        repaint();
+    }
 
-		if (result == JFileChooser.APPROVE_OPTION) {
-			selectedFile = fc.getSelectedFile();
-			System.out.println("Selected file: " + selectedFile.getAbsolutePath());
-		} else {
-			dispose();
-			System.exit(0);
-		}
+    @Override
+    public void paint(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g;
+        draw(g2);
+    }
 
-		try {
-			levelImg = ImageIO.read(selectedFile);
+    private void draw(Graphics2D g2d) {
+        BufferedImage level = (BufferedImage) l.getResultingImage();
+        if (l.offsetX > level.getWidth() - 1000)
+            l.offsetX = level.getWidth() - 1000;
+        BufferedImage bi = level.getSubimage((int) l.offsetX, 0, 1000, level.getHeight());
+        g2d.drawImage(bi, 0, 0, this);
+    }
 
-			this.setBounds(0, 0, 1000 + 16, 350 + 39);
-			this.setVisible(true);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+    public class AL extends KeyAdapter {
+        Platformer p;
 
-	}
+        public AL(Platformer p) {
+            super();
+            this.p = p;
+        }
 
-	@Override
-	public void paint(Graphics g) {
-		Graphics2D g2d = (Graphics2D) g;
-		if (level != null && level.getRenderedLevel() != null) {
-			BufferedImage visibleLevel = level.getRenderedLevel().getSubimage(cameraX, 0, 1000, 350);
-			g2d.drawImage(visibleLevel, 8, 31, this);
+        @Override
+        public void keyPressed(KeyEvent event) {
+            int keyCode = event.getKeyCode();
 
-		}
+            if (keyCode == KeyEvent.VK_ESCAPE) {
+                dispose();
+            }
 
-	}
+            if (keyCode == KeyEvent.VK_LEFT) {
+                l.offsetX -= 10;
+            }
+
+            if (keyCode == KeyEvent.VK_RIGHT) {
+                l.offsetX += 10;
+            }
+            updateGameStateAndRepaint();
+        }
+    }
 }
