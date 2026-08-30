@@ -1,6 +1,5 @@
 public class Main {
-	public static void main(final String[] args) {
-		new Platformer();
-		// new Level();
-	}
-}
+    public static void main(final String[] args) {
+        new Platformer();
+    }
+}s
