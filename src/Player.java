@@ -7,6 +7,8 @@ import java.util.ArrayList;
 
 
 import javax.imageio.ImageIO;
+import javax.sound.sampled.AudioSystem;
+import javax.sound.sampled.Clip;
 
 public class Player {
     boolean jump = false, walkingLeft = false, walkingRight = false;
@@ -102,6 +104,7 @@ public class Player {
 
         if (jump && collidesDown) {
             pos.y -= jumpPower;
+            playSound(Platformer.BasePath + "Sound/jump1.wav");
         }
 
         // Save old position
@@ -183,5 +186,19 @@ public class Player {
             return tilesWalk.get(displayedAnimationState);
         }
         return tilesWalk.get(7);
+    }
+
+    public void playSound(String path) {
+        File lol = new File(path);
+        if (!lol.exists()) {
+            lol = new File(Platformer.BasePath + path);
+        }
+        try {
+            Clip clip = AudioSystem.getClip();
+            clip.open(AudioSystem.getAudioInputStream(lol));
+            clip.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

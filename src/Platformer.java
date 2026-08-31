@@ -63,6 +63,7 @@ public class Platformer extends JFrame {
 
             this.setBounds(0, 0, 1000, 12 * 70);
             this.setVisible(true);
+            p.playSound(BasePath + "Sound/soundtrack.wav");
             gameStateUpdateTrigger = new Timer();
             gameStateUpdateTrigger.scheduleAtFixedRate(new TimerTask() {
 
