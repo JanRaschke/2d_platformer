@@ -4,90 +4,236 @@ import java.awt.event.KeyAdapter;
 import java.awt.event.KeyEvent;
 import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
+import java.awt.image.BufferStrategy;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.io.Serial;
+import java.util.Timer;
+import java.util.TimerTask;
 
-import javax.imageio.ImageIO;
 import javax.swing.JFileChooser;
 import javax.swing.JFrame;
 import javax.swing.filechooser.FileFilter;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 public class Platformer extends JFrame {
-	@Serial
-	private static final long serialVersionUID = 5736902251450559962L;
-	private Level level;
-	private int cameraX = 0;
+    public static final String BasePath = "./assets/";
+    @Serial
+    private static final long serialVersionUID = 5736902251450559962L;
 
-	BufferedImage levelImg;
+    private Player p = null;
+    private Level l = null;
+    BufferStrategy bufferStrategy;
 
-	public Platformer() {
-		// exit program when window is closed
-		this.addWindowListener(new WindowAdapter() {
-			public void windowClosing(WindowEvent e) {
-				System.exit(0);
-			}
-		});
+    Timer gameStateUpdateTrigger;
 
-		this.level = new Level();
-		this.addKeyListener(new KeyAdapter() {
+    public Platformer() {
+        //exit program when window is closed
+        this.addWindowListener(new WindowAdapter() {
+            public void windowClosing(WindowEvent e) {
+                System.exit(0);
+            }
+        });
 
-			@Override
-			public void keyPressed(KeyEvent e) {
-				if (level == null || level.getRenderedLevel() == null) {
-					return;
-				}
-				if (e.getKeyCode() == KeyEvent.VK_LEFT) {
-					cameraX = Math.max(0, cameraX - 20);
-					repaint();
-				} else if (e.getKeyCode() == KeyEvent.VK_RIGHT) {
-					int maxScroll = level.getRenderedLevel().getWidth() - 1000;
-					cameraX = Math.min(maxScroll, cameraX + 20);
-					repaint();
-				}
+        JFileChooser fc = new JFileChooser();
+        fc.setCurrentDirectory(new File("./"));
+        fc.setDialogTitle("Select input image");
+        FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp");
+        fc.setFileFilter(filter);
+        int result = fc.showOpenDialog(this);
+        File selectedFile = new File("");
+        addKeyListener(new AL(this));
+        createBufferStrategy(2);
+        bufferStrategy = this.getBufferStrategy();
 
-			}
 
-		});
+        if (result == JFileChooser.APPROVE_OPTION) {
+            selectedFile = fc.getSelectedFile();
+            System.out.println("Selected file: " + selectedFile.getAbsolutePath());
+        } else {
+            dispose();
+            System.exit(0);
+        }
 
-		this.setTitle("Platformer");
+        try {
+            l = new Level(selectedFile.getAbsolutePath(), BasePath + "background0.png");
+            p = new Player(l);
+            l.player = p;
 
-		JFileChooser fc = new JFileChooser();
-		fc.setCurrentDirectory(new File("./"));
-		fc.setDialogTitle("Select input image");
-		FileFilter filter = new FileNameExtensionFilter("Level image (.bmp)", "bmp");
-		fc.setFileFilter(filter);
-		int result = fc.showOpenDialog(this);
-		File selectedFile = new File("");
+            this.setBounds(0, 0, 1000, 12 * 70);
+            this.setVisible(true);
+            gameStateUpdateTrigger = new Timer();
+            gameStateUpdateTrigger.scheduleAtFixedRate(new TimerTask() {
 
-		if (result == JFileChooser.APPROVE_OPTION) {
-			selectedFile = fc.getSelectedFile();
-			System.out.println("Selected file: " + selectedFile.getAbsolutePath());
-		} else {
-			dispose();
-			System.exit(0);
-		}
+                @Override
+                public void run() {
+                    updateGameStateAndRepaint();
+                }
 
-		try {
-			levelImg = ImageIO.read(selectedFile);
+            }, 0, 10);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
-			this.setBounds(0, 0, 1000 + 16, 350 + 39);
-			this.setVisible(true);
-		} catch (Exception e) {
-			e.printStackTrace();
-		}
+    }
 
-	}
+    private void restart() throws IOException {
+        p.pos.x = 0;
+        p.pos.y = 0;
+        l.offsetX = 0;
+        l.initLevel();
+    }
 
-	@Override
-	public void paint(Graphics g) {
-		Graphics2D g2d = (Graphics2D) g;
-		if (level != null && level.getRenderedLevel() != null) {
-			BufferedImage visibleLevel = level.getRenderedLevel().getSubimage(cameraX, 0, 1000, 350);
-			g2d.drawImage(visibleLevel, 8, 31, this);
+    private void updateGameStateAndRepaint() {
+        l.update();
+        p.update();
+        checkCollision();
 
-		}
+        repaint();
+    }
 
-	}
+    private void checkCollision() {
+        float playerPosX = p.pos.x;
+
+        p.collidesDown = false;
+        p.collidesLeft = false;
+        p.collidesRight = false;
+        p.collidesTop = false;
+        p.collides = false;
+
+        // Collision
+        for (int i = 0; i < l.tiles.size(); i++) {
+
+            Tile tile = l.tiles.get(i);
+
+            Vec2 overlapSize = tile.bb.OverlapSize(p.boundingBox);
+
+            float epsilon = 8.f; // experiment with this value. If too low,the player might get stuck when walking over the
+            // ground. If too high, it can cause glitching inside/through walls
+
+            if (overlapSize.x >= 0 && overlapSize.y >= 0 && Math.abs(overlapSize.x + overlapSize.y) >= epsilon) {
+
+                if (Math.abs(overlapSize.x) > Math.abs(overlapSize.y)) {// Y overlap correction
+
+                    if (p.boundingBox.min.y + p.boundingBox.max.y > tile.bb.min.y + tile.bb.max.y) { // player comes from below
+                        p.pos.y += overlapSize.y;
+                        p.collidesTop = true;
+                    } else { // player comes from above
+                        p.pos.y -= overlapSize.y;
+                        p.collidesDown = true;
+                    }
+                } else { // X overlap correction
+                    if (p.boundingBox.min.x + p.boundingBox.max.x > tile.bb.min.x + tile.bb.max.x) { // player comes from right{
+                        p.pos.x += overlapSize.x;
+                        p.collidesLeft = true;
+                    } else { // player comes from left
+                        p.pos.x -= overlapSize.x;
+                        p.collidesRight = true;
+                    }
+                }
+
+                p.collides = true;
+                p.updateBoundingBox();
+            }
+        }
+    }
+
+    @Override
+    public void paint(Graphics g) {
+        Graphics2D g2 = null;
+
+        try {
+            g2 = (Graphics2D) bufferStrategy.getDrawGraphics();
+            draw(g2);
+
+        } finally {
+            g2.dispose();
+        }
+        bufferStrategy.show();
+    }
+
+    private void draw(Graphics2D g2d) {
+        BufferedImage level = (BufferedImage) l.getResultingImage();
+        if (l.offsetX > level.getWidth() - 1000)
+            l.offsetX = level.getWidth() - 1000;
+        BufferedImage bi = level.getSubimage((int) l.offsetX, 0, 1000, level.getHeight());
+        g2d.drawImage(l.backgroundImage, 0, 0, this);
+        g2d.drawImage(bi, 0, 0, this);
+        g2d.drawImage(getPlayer().getPlayerImage(), (int) (getPlayer().pos.x - l.offsetX), (int) getPlayer().pos.y, this);
+    }
+
+    public Player getPlayer() {
+        return this.p;
+    }
+
+    public class AL extends KeyAdapter {
+        Platformer p;
+
+        public AL(Platformer p) {
+            super();
+            this.p = p;
+        }
+
+        @Override
+        public void keyPressed(KeyEvent event) {
+            int keyCode = event.getKeyCode();
+            Player player = p.getPlayer();
+
+            if (keyCode == KeyEvent.VK_ESCAPE) {
+                dispose();
+            }
+
+            if (keyCode == KeyEvent.VK_UP) {
+            }
+
+            if (keyCode == KeyEvent.VK_DOWN) {
+            }
+
+            if (keyCode == KeyEvent.VK_LEFT) {
+                player.walkingLeft = true;
+            }
+
+            if (keyCode == KeyEvent.VK_RIGHT) {
+                player.walkingRight = true;
+            }
+
+            if (keyCode == KeyEvent.VK_SPACE) {
+                player.jump = true;
+            }
+
+            if (keyCode == KeyEvent.VK_R) {
+                try {
+                    restart();
+                } catch (IOException e) {
+                    // TODO Auto-generated catch block
+                    e.printStackTrace();
+                }
+            }
+        }
+
+        @Override
+        public void keyReleased(KeyEvent event) {
+            int keyCode = event.getKeyCode();
+            Player player = p.getPlayer();
+
+            if (keyCode == KeyEvent.VK_UP) {
+            }
+
+            if (keyCode == KeyEvent.VK_DOWN) {
+            }
+
+            if (keyCode == KeyEvent.VK_LEFT) {
+                player.walkingLeft = false;
+            }
+
+            if (keyCode == KeyEvent.VK_RIGHT) {
+                player.walkingRight = false;
+            }
+
+            if (keyCode == KeyEvent.VK_SPACE) {
+                player.jump = false;
+            }
+        }
+    }
 }
